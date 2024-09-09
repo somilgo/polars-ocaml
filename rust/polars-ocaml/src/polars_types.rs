@@ -258,7 +258,6 @@ unsafe impl ToOCaml<QuantileInterpolOptions> for PolarsQuantileInterpolOptions {
                 QuantileInterpolOptions::Higher,
                 QuantileInterpolOptions::Linear,
                 QuantileInterpolOptions::Midpoint,
-                QuantileInterpolOptions::Milliseconds,
             }
         }
     }

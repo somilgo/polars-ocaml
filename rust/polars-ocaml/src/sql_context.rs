@@ -66,8 +66,7 @@ fn rust_sql_context_execute_with_data_frames(
             .and_then(|query_result| query_result.collect())
             .map(|df| Abstract(Rc::new(RefCell::new(df))))
             .map_err(|err| err.to_string())
-    })
-    .to_ocaml(cr)
+    }).to_ocaml(cr)
 }
 
 fn sql_context_vstack_and_execute(
@@ -90,7 +89,9 @@ fn sql_context_vstack_and_execute(
         sql_context.register(&name, data_frame.lazy());
     }
 
-    sql_context.execute(&query).map_err(|err| err.to_string())
+    sql_context
+        .execute(&query)
+        .map_err(|err| err.to_string())
 }
 
 #[ocaml_interop_export]
@@ -132,8 +133,7 @@ fn rust_sql_context_vstack_and_collect(
         sql_context_vstack_and_execute(query, names_and_data_frames)
             .and_then(|lazy_frame| lazy_frame.collect().map_err(|err| err.to_string()))
             .map(|df| Abstract(Rc::new(RefCell::new(df))))
-    })
-    .to_ocaml(cr)
+    }).to_ocaml(cr)
 }
 
 #[ocaml_interop_export]
