@@ -92,7 +92,7 @@ module T = struct
   external quantile
     :  t
     -> quantile_expr:t
-    -> interpol_option:[ `Nearest | `Lower | `Higher |`Linear  | `Midpoint  ]
+    -> interpol_option:[ `Nearest | `Lower | `Higher | `Linear  | `Midpoint  ]
     -> t
     = "rust_expr_quantile"
 

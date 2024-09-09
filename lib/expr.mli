@@ -850,7 +850,7 @@ val mean : t -> t
 val median : t -> t
 
 val quantile
-  :  ?interpol_option:[ `Nearest | `Lower | `Higher | `Midpoint | `Linear ]
+  :  ?interpol_option:[ `Nearest | `Lower | `Higher | `Linear | `Midpoint ]
   -> t
   -> quantile_expr:t
   -> t
