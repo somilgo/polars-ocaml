@@ -38,7 +38,6 @@ unsafe impl ToOCaml<TimeUnit> for PolarsTimeUnit {
     }
 }
 
-
 pub struct PolarsDataType(pub DataType);
 
 unsafe impl FromOCaml<DataType> for PolarsDataType {

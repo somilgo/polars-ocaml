@@ -950,13 +950,6 @@ val count_ : unit -> t
 
 val n_unique : t -> t
 val approx_n_unique : t -> t
-
-(** Get unique values of this expression *)
-val unique : t -> t
-
-(** Get unique values of this expression, while maintaining order. This requires more work than [unique] *)
-val unique_stable : t -> t
-
 val explode : t -> t
 
 val over
