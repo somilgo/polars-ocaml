@@ -360,7 +360,11 @@ expr_op!(rust_expr_pow, |base, exponent| base.pow(exponent));
 expr_op!(rust_expr_sum, |expr| expr.sum());
 expr_op!(rust_expr_mean, |expr| expr.mean());
 expr_op!(rust_expr_median, |expr| expr.median());
-expr_op!(rust_expr_quantile, |expr, quantile_num, quantile_interpol_option| expr.quantile(quantile_num, quantile_interpol_option));
+expr_op!(
+    rust_expr_quantile,
+    |expr, quantile_num, quantile_interpol_option| expr
+        .quantile(quantile_num, quantile_interpol_option)
+);
 expr_op!(rust_expr_mode, |expr| expr.mode());
 expr_op!(rust_expr_max, |expr| expr.max());
 expr_op!(rust_expr_min, |expr| expr.min());

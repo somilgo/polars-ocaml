@@ -264,7 +264,6 @@ unsafe impl ToOCaml<QuantileInterpolOptions> for PolarsQuantileInterpolOptions {
     }
 }
 
-
 pub struct PolarsFillNullStrategy(pub FillNullStrategy);
 
 unsafe impl FromOCaml<FillNullStrategy> for PolarsFillNullStrategy {
