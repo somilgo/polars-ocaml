@@ -67,6 +67,7 @@ let describe ?percentiles t = describe t ~percentiles
 let describe_exn ?percentiles t = describe ?percentiles t |> Utils.string_result_ok_exn
 
 external height : t -> int = "rust_data_frame_height"
+external estimated_size : t -> int = "rust_data_frame_estimated_size"
 external lazy_ : t -> Lazy_frame.t = "rust_data_frame_lazy"
 
 let in_lazy t ~f = lazy_ t |> f |> Lazy_frame.collect
@@ -345,6 +346,19 @@ let explode_exn t ~columns = explode t ~columns |> Utils.string_result_ok_exn
 external schema : t -> Schema.t = "rust_data_frame_schema"
 external to_string_hum : t -> string = "rust_data_frame_to_string_hum"
 
+external partition_by'
+  :  t
+  -> by:string list
+  -> maintain_order:bool
+  -> (t list, string) result
+  = "rust_data_frame_partition_by"
+
+let partition_by ?(maintain_order = true) t ~by = partition_by' t ~by ~maintain_order
+
+let partition_by_exn ?maintain_order t ~by =
+  partition_by ?maintain_order t ~by |> Utils.string_result_ok_exn
+;;
+
 let print t = print_endline (to_string_hum t)
 
 include Pretty_printer.Register (struct
@@ -353,3 +367,72 @@ include Pretty_printer.Register (struct
     let module_name = "Polars.Data_frame"
     let to_string = to_string_hum
   end)
+
+module Expert = struct
+  external modify_series_at_chunk_index_exn
+    :  t
+    -> dtype:'a Data_type.Typed.t
+    -> series_index:int
+    -> chunk_index:int
+    -> indices_and_values:(int * 'a) list
+    -> (unit, string) result
+    = "rust_data_frame_modify_series_at_chunk_index"
+
+  let modify_series_at_chunk_index t ~dtype ~series_index ~chunk_index ~indices_and_values
+    =
+    match
+      Or_error.try_with (fun () ->
+        modify_series_at_chunk_index_exn
+          t
+          ~dtype
+          ~series_index
+          ~chunk_index
+          ~indices_and_values)
+    with
+    | Ok result -> result
+    | Error error ->
+      Error
+        (sprintf
+           "modify_series_at_chunk_index_exn raised an exception. Usually this happens \
+            when accessing an index out of bounds of the chunk or passing in a value \
+            outside of the domain of dtype: %s"
+           (Error.to_string_hum error))
+  ;;
+
+  external modify_optional_series_at_chunk_index_exn
+    :  t
+    -> dtype:'a Data_type.Typed.t
+    -> series_index:int
+    -> chunk_index:int
+    -> indices_and_values:(int * 'a option) list
+    -> (unit, string) result
+    = "rust_data_frame_modify_optional_series_at_chunk_index"
+
+  let modify_optional_series_at_chunk_index
+    t
+    ~dtype
+    ~series_index
+    ~chunk_index
+    ~indices_and_values
+    =
+    match
+      Or_error.try_with (fun () ->
+        modify_optional_series_at_chunk_index_exn
+          t
+          ~dtype
+          ~series_index
+          ~chunk_index
+          ~indices_and_values)
+    with
+    | Ok result -> result
+    | Error error ->
+      Error
+        (sprintf
+           "modify_series_at_chunk_index_exn raised an exception. Usually this happens \
+            when accessing an index out of bounds of the chunk or passing in a value \
+            outside of the domain of dtype: %s"
+           (Error.to_string_hum error))
+  ;;
+
+  external clear_mut : t -> unit = "rust_data_frame_clear_mut"
+end

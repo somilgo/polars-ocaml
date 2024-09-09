@@ -1,6 +1,8 @@
 use crate::interop::*;
 use crate::polars_types::*;
-use ocaml_interop::{DynBox, OCaml, OCamlFloat, OCamlInt, OCamlList, OCamlRef, ToOCaml};
+use ocaml_interop::{
+    DynBox, OCaml, OCamlFloat, OCamlInt, OCamlList, OCamlRef, OCamlRuntime, ToOCaml,
+};
 use polars::prelude::*;
 use polars_ocaml_macros::ocaml_interop_export;
 use smartstring::{LazyCompact, SmartString};
@@ -226,6 +228,16 @@ fn rust_data_frame_height(
     let Abstract(data_frame) = data_frame.to_rust(cr);
     let height = data_frame.borrow().height() as i64;
     height.to_ocaml(cr)
+}
+
+#[ocaml_interop_export]
+fn rust_data_frame_estimated_size(
+    cr: &mut &mut OCamlRuntime,
+    data_frame: OCamlRef<DynBox<PolarsDataFrame>>,
+) -> OCaml<OCamlInt> {
+    let Abstract(data_frame) = data_frame.to_rust(cr);
+    let estimated_size = data_frame.borrow().estimated_size() as i64;
+    estimated_size.to_ocaml(cr)
 }
 
 #[ocaml_interop_export]
@@ -677,4 +689,113 @@ fn rust_data_frame_to_string_hum(
     let Abstract(data_frame) = data_frame.to_rust(cr);
     let data_frame = data_frame.borrow();
     data_frame.to_string().to_ocaml(cr)
+}
+
+#[ocaml_interop_export]
+fn rust_data_frame_partition_by(
+    cr: &mut &mut OCamlRuntime,
+    data_frame: OCamlRef<DynBox<PolarsDataFrame>>,
+    by: OCamlRef<OCamlList<String>>,
+    maintain_order: OCamlRef<bool>,
+) -> OCaml<Result<OCamlList<DynBox<PolarsDataFrame>>, String>> {
+    let Abstract(data_frame) = data_frame.to_rust(cr);
+    let data_frame = data_frame.borrow();
+    let cols: Vec<String> = by.to_rust(cr);
+    let partitioned = if maintain_order.to_rust(cr) {
+        data_frame.partition_by_stable(cols, true)
+    } else {
+        data_frame.partition_by(cols, true)
+    };
+    partitioned
+        .map(|v| {
+            v.into_iter()
+                .map(|df| Abstract(Rc::new(RefCell::new(df))))
+                .collect::<Vec<_>>()
+        })
+        .map_err(|err| err.to_string())
+        .to_ocaml(cr)
+}
+
+fn modify_series_at_chunk_index(
+    cr: &&mut OCamlRuntime,
+    data_frame: OCamlRef<DynBox<PolarsDataFrame>>,
+    data_type: OCamlRef<GADTDataType>,
+    series_index: OCamlRef<OCamlInt>,
+    chunk_index: OCamlRef<OCamlInt>,
+    indices_and_values: OCamlRef<OCamlList<(OCamlInt, DummyBoxRoot)>>,
+    are_values_options: bool,
+) -> Result<(), String> {
+    let Abstract(data_frame) = data_frame.to_rust(cr);
+    let mut data_frame = data_frame.borrow_mut();
+    let columns = unsafe { data_frame.get_columns_mut() };
+    let series_index = series_index.to_rust::<Coerce<_, i64, usize>>(cr).get()?;
+    let series = match columns.get_mut(series_index) {
+        Some(series) => Ok(series),
+        None => Err(format!("Column index out of bounds: {}", series_index)),
+    }?;
+    crate::series::modify_series_at_chunk_index(
+        cr,
+        series,
+        data_type,
+        chunk_index,
+        indices_and_values,
+        are_values_options,
+    )
+    .map_err(|err| err.to_string())
+}
+
+#[ocaml_interop_export]
+fn rust_data_frame_modify_series_at_chunk_index(
+    cr: &mut &mut OCamlRuntime,
+    data_frame: OCamlRef<DynBox<PolarsDataFrame>>,
+    data_type: OCamlRef<GADTDataType>,
+    series_index: OCamlRef<OCamlInt>,
+    chunk_index: OCamlRef<OCamlInt>,
+    indices_and_values: OCamlRef<OCamlList<(OCamlInt, DummyBoxRoot)>>,
+) -> OCaml<Result<DynBox<()>, String>> {
+    modify_series_at_chunk_index(
+        cr,
+        data_frame,
+        data_type,
+        series_index,
+        chunk_index,
+        indices_and_values,
+        false,
+    )
+    .map(Abstract)
+    .to_ocaml(cr)
+}
+
+#[ocaml_interop_export]
+fn rust_data_frame_modify_optional_series_at_chunk_index(
+    cr: &mut &mut OCamlRuntime,
+    data_frame: OCamlRef<DynBox<PolarsDataFrame>>,
+    data_type: OCamlRef<GADTDataType>,
+    series_index: OCamlRef<OCamlInt>,
+    chunk_index: OCamlRef<OCamlInt>,
+    indices_and_values: OCamlRef<OCamlList<(OCamlInt, DummyBoxRoot)>>,
+) -> OCaml<Result<DynBox<()>, String>> {
+    modify_series_at_chunk_index(
+        cr,
+        data_frame,
+        data_type,
+        series_index,
+        chunk_index,
+        indices_and_values,
+        true,
+    )
+    .map(Abstract)
+    .to_ocaml(cr)
+}
+
+#[ocaml_interop_export(raise_on_err)]
+fn rust_data_frame_clear_mut(
+    cr: &mut &mut OCamlRuntime,
+    data_frame: OCamlRef<DynBox<PolarsDataFrame>>,
+) -> OCaml<()> {
+    let Abstract(data_frame) = data_frame.to_rust(cr);
+    let mut data_frame = data_frame.borrow_mut();
+    *data_frame = data_frame.clear();
+
+    OCaml::unit()
 }

@@ -5,7 +5,6 @@ use chrono::{Duration, NaiveDate, NaiveDateTime, NaiveTime};
 use ocaml_interop::{
     DynBox, OCaml, OCamlBytes, OCamlFloat, OCamlInt, OCamlList, OCamlRef, OCamlRuntime, ToOCaml,
 };
-use polars::lazy::dsl::GetOutput;
 use polars::prelude::*;
 use polars::series::IsSorted;
 use polars_ocaml_macros::ocaml_interop_export;
@@ -162,7 +161,7 @@ fn rust_expr_lit(
                 cr,
                 &GADTDataType::List(data_type),
                 "series",
-                vec![value],
+                vec![value].into_iter(),
                 false,
             )?;
             lit(series)
@@ -313,6 +312,7 @@ fn rust_expr_sample_n(
 }
 
 expr_op!(rust_expr_filter, |expr, predicate| expr.filter(predicate));
+expr_op!(rust_expr_is_in, |expr, other| expr.is_in(other));
 expr_op!(rust_expr_ceil, |expr| expr.ceil());
 expr_op!(rust_expr_floor, |expr| expr.floor());
 
@@ -652,6 +652,19 @@ expr_op!(rust_expr_sub, |expr, other| expr - other);
 expr_op!(rust_expr_mul, |expr, other| expr * other);
 expr_op!(rust_expr_div, |expr, other| expr / other);
 expr_op!(rust_expr_floor_div, |expr, other| expr.floor_div(other));
+expr_op!(rust_expr_abs, |expr| expr.abs());
+expr_op!(rust_expr_exp, |expr| expr.exp());
+expr_op!(rust_expr_log1p, |expr| expr.log1p());
+
+#[ocaml_interop_export]
+fn rust_expr_log(
+    cr: &mut &mut OCamlRuntime,
+    expr: OCamlRef<DynBox<Expr>>,
+    base: OCamlRef<OCamlFloat>,
+) -> OCaml<DynBox<Expr>> {
+    let base: f64 = base.to_rust(cr);
+    dyn_box(cr, expr, |expr| expr.log(base))
+}
 
 #[ocaml_interop_export]
 fn rust_expr_dt_strftime(
@@ -781,6 +794,9 @@ fn rust_expr_dt_nanoseconds(
         GetOutput::from_type(DataType::Int64),
     )
 }
+
+expr_op!(rust_expr_dt_date, |expr| expr.dt().date());
+expr_op!(rust_expr_dt_time, |expr| expr.dt().time());
 
 #[ocaml_interop_export]
 fn rust_expr_str_split(
